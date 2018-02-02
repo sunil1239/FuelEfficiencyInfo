@@ -1,8 +1,11 @@
 from PySide import QtGui, QtCore
-import ctypes
+import ctypes, json
+from selTesting import todayFuelPrice
 
 SCREENX = ctypes.windll.user32.GetSystemMetrics(0)
 SCREENY = ctypes.windll.user32.GetSystemMetrics(1)
+
+CUR_PRICE = todayFuelPrice().getPrice()
 
 class myApp(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -25,7 +28,7 @@ class myApp(QtGui.QMainWindow):
         distanceLabel.setText("Total Distance : ")
         self.distanceValue = QtGui.QLabel(self.centralWidget)
         amountLabel = QtGui.QLabel(self.centralWidget)
-        amountLabel.setText("Total Amount : ")
+        amountLabel.setText("Todays Price : ")
         self.amountValue = QtGui.QLabel(self.centralWidget)
         verticalSpacer = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
 
@@ -51,7 +54,7 @@ class myApp(QtGui.QMainWindow):
         self.delEntry.setText("Delete")
 
         self.distanceValue.setText("496.2km")
-        self.amountValue.setText("726.46Rs")
+        self.amountValue.setText("Rs."+str(CUR_PRICE))
 
 
 import sys
