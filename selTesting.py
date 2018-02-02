@@ -1,7 +1,7 @@
 from selenium import webdriver
 # from selenium.webdriver.common.keys import Keys
 class todayFuelPrice:
-    def getPrice(self):
+    def getPrice(self, city="Hyderabad"):
         path = "chromedriver"
         driver = webdriver.Chrome(path)
 
@@ -15,7 +15,7 @@ class todayFuelPrice:
             price = None
             for cols in range(1, colCount+1):
                 data = driver.find_element_by_xpath('//*[@id="contentDiv"]/table/tbody/tr['+str(rows)+']''/td['+str(cols)+']').text
-                if 'Hyderabad' in data:
+                if city in data:
                     price = driver.find_element_by_xpath('//*[@id="contentDiv"]/table/tbody/tr['+str(rows)+']''/td['+str(cols+1)+']').text
                     break
             if price != None:
@@ -26,4 +26,5 @@ class todayFuelPrice:
         driver.quit()
         return float(price)
 
-# todayFuelPrice().getPrice()
+if __name__ == '__main__':
+    todayFuelPrice().getPrice()
