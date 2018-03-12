@@ -1,6 +1,7 @@
 from PySide import QtGui, QtCore
 import ctypes, json, datetime, os
 from selTesting import todayFuelPrice
+import matplotlib.pyplot as plt
 
 SCREENX = ctypes.windll.user32.GetSystemMetrics(0)
 SCREENY = ctypes.windll.user32.GetSystemMetrics(1)
@@ -9,6 +10,50 @@ DATETODAY = datetime.date.today()
 
 WRK_DIR = os.getcwd().replace("\\","/")
 DATASTORE = "fuelInfo.json"
+
+class adDialog(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        super(adDialog, self).__init__(parent)
+        self.width = 300
+        self.height = 150
+        self.setWindowTitle("Add new Values")
+        self.setFixedSize(self.width, self.height)
+        self.centralWidget = QtGui.QWidget(self)
+        self.mainLayout = QtGui.QGridLayout(self.centralWidget)
+        amtLab = QtGui.QLabel(self.centralWidget)
+        amtLab.setText("Amount : ")
+        self.amtEdit = QtGui.QLineEdit(self.centralWidget)
+        self.amtEdit.setPlaceholderText("Enter amount here")
+        upDate = QtGui.QLabel(self.centralWidget)
+        upDate.setText("Date : ")
+        self.upDateBox = QtGui.QComboBox(self.centralWidget)
+        self.upDateBox.addItem(myApp().sysDateToDate(datetime.date.today()))
+        self.upDateBox.addItem(myApp().sysDateToDate(datetime.date.today()-datetime.timedelta(1)))
+        adBtn = QtGui.QPushButton(self.centralWidget)
+        adBtn.setText("Add Amount")
+        adBtn.clicked.connect(self.addInfo)
+        canBtn = QtGui.QPushButton(self.centralWidget)
+        canBtn.setText("Cancel")
+        canBtn.clicked.connect(self.close)
+        self.mainLayout.addWidget(amtLab, 0, 0, 1, 1)
+        self.mainLayout.addWidget(self.amtEdit, 0, 1, 1, 3)
+        self.mainLayout.addWidget(upDate, 1, 0, 1, 1)
+        self.mainLayout.addWidget(self.upDateBox, 1, 1, 1, 3)
+        self.mainLayout.addWidget(adBtn, 2, 2, 1, 1)
+        self.mainLayout.addWidget(canBtn, 2, 3, 1, 1)
+
+        self.setCentralWidget(self.centralWidget)
+
+    def addInfo(self):
+        with open(DATASTORE, 'r') as fd:
+            data = json.load(fd)
+        if self.amtEdit.text() != "":
+            data['FuelInfo']['FilledAmount'].append(float(self.amtEdit.text()))
+            data['FuelInfo']['FilledOn'].append(str(self.upDateBox.itemText(self.upDateBox.currentIndex())))
+        with open(DATASTORE, 'w') as fd:
+            json.dump(data, fd)
+        myApp().updateTable()
+        self.close()
 
 class myApp(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -49,13 +94,14 @@ class myApp(QtGui.QMainWindow):
 
         self.addNew = QtGui.QPushButton(self.centralWidget)
         self.editEntry = QtGui.QPushButton(self.centralWidget)
+        self.editEntry.clicked.connect(self.displayGraph)
         self.delEntry = QtGui.QPushButton(self.centralWidget)
         emptySpace = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.entryHolder = QtGui.QTableView(self.centralWidget)
         self.nextEntryLab = QtGui.QLabel(self.centralWidget)
 
         self.addNew.clicked.connect(self.inputAmount)
-        self.editEntry.setEnabled(False)
+
         self.delEntry.setEnabled(False)
 
         self.dataEntryModel = QtGui.QStandardItemModel(0, 6)
@@ -111,14 +157,15 @@ class myApp(QtGui.QMainWindow):
     def retranslateUi(self):
         self.setWindowTitle("CFE(Fuel Efficiency)")
         self.addNew.setText("Add")
-        self.editEntry.setText("Edit")
+        self.editEntry.setText("Show Rate Graph")
         self.delEntry.setText("Delete")
 
         self.distanceValue.setText("496.2km")
         self.amountValue.setText("Rs."+str(self.curPrice))
 
     def inputAmount(self):
-        print("Will show a window in this place")
+        dial = adDialog(self)
+        dial.show()
 
     def updateTable(self):
         with open(DATASTORE) as fd:
@@ -160,7 +207,11 @@ class myApp(QtGui.QMainWindow):
                 totalDays = self.avgDays[indAmt+1]
             else:
                 nextUp = self.sysDateToDate(self.DateToSysDate(onDate)+datetime.timedelta(days=self.avgEst))
-                self.nextEntryLab.setText("Next Fuel may be with in "+str((self.DateToSysDate(nextUp)-DATETODAY).days)+" days")
+                if not (self.DateToSysDate(nextUp)-DATETODAY).days < 0:
+                    self.nextEntryLab.setText("Next Fuel may be with in "+str((self.DateToSysDate(nextUp)-DATETODAY).days)+" days")
+                else:
+                    self.nextEntryLab.setText(
+                        "Ohhh! You're doing great... \nYou crossed by " + str((DATETODAY - (self.DateToSysDate(nextUp))).days) + " days")
                 item = QtGui.QStandardItem(nextUp+"(Avg)")
                 totalDays = str((self.DateToSysDate(nextUp)-self.DateToSysDate(onDate)).days)+" Avg"
             self.dataEntryModel.setItem(indAmt, 3, item)
@@ -182,6 +233,27 @@ class myApp(QtGui.QMainWindow):
         for each in self.totAmtLst:
             self.totAmt += each
         self.distanceValue.setText("Rs."+str(round(self.totAmt,2)))
+
+    def displayGraph(self):
+        with open("fuelInfo.json") as fd:
+            data = json.load(fd)
+        dates = []
+        rates = []
+        for keys, values in data['DailyRate'].items():
+            dated = self.DateToSysDate(keys)
+            if int(datetime.date.today().month) == int(str(dated).split("-")[1]):
+                dates.append(keys)
+
+        dates.sort()
+        for each in dates:
+            rates.append(data['DailyRate'][each])
+        x = dates
+        y = rates
+        plt.plot(x,y)
+        plt.xlabel("Somethin X")
+        plt.ylabel("Something Y")
+
+        plt.show()
 
 if __name__ == '__main__':
     import sys
