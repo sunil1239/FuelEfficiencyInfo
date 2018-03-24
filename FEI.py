@@ -242,6 +242,7 @@ class myApp(QtGui.QMainWindow):
         for keys, values in data['DailyRate'].items():
             dated = self.DateToSysDate(keys)
             if int(datetime.date.today().month) == int(str(dated).split("-")[1]):
+                print(keys)
                 dates.append(keys)
 
         dates.sort()
