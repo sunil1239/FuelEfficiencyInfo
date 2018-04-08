@@ -2,6 +2,7 @@ from PySide import QtGui, QtCore
 import ctypes, json, datetime, os
 from selTesting import todayFuelPrice
 import matplotlib.pyplot as plt
+from toggelSwitch import toggleSwitch
 
 SCREENX = ctypes.windll.user32.GetSystemMetrics(0)
 SCREENY = ctypes.windll.user32.GetSystemMetrics(1)
@@ -9,7 +10,19 @@ SCREENY = ctypes.windll.user32.GetSystemMetrics(1)
 DATETODAY = datetime.date.today()
 
 WRK_DIR = os.getcwd().replace("\\","/")
-DATASTORE = "fuelInfo.json"
+
+if os.path.exists(os.path.expanduser('~/Documents').replace('\\','/')):
+    finalJson = os.path.expanduser('~/Documents').replace('\\','/')+"/FuelInfoCalculator"
+    try:
+        os.mkdir(finalJson)
+    except:
+        pass
+    finalJson = finalJson+"/fuelInfo.json"
+    if not os.path.exists(finalJson):
+        with open(finalJson, 'w') as fd:
+            fd.write('{"DailyRate":{}, "FuelInfo": {"FilledAmount": [], "FilledOn": []}, "TotalKMS": {}}')
+jsonFile = os.path.expanduser('~/Documents').replace('\\','/')+"/FuelInfoCalculator/fuelInfo.json"
+DATASTORE = jsonFile
 
 class adDialog(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -41,6 +54,7 @@ class adDialog(QtGui.QMainWindow):
         self.mainLayout.addWidget(self.upDateBox, 1, 1, 1, 3)
         self.mainLayout.addWidget(adBtn, 2, 2, 1, 1)
         self.mainLayout.addWidget(canBtn, 2, 3, 1, 1)
+        # self.mainLayout.addLayout(toggleSwitch.layout,0,3,1,1)
 
         self.setCentralWidget(self.centralWidget)
 
@@ -232,17 +246,32 @@ class myApp(QtGui.QMainWindow):
         self.avgPerDay.setText("Rs."+str(self.avgPd))
         for each in self.totAmtLst:
             self.totAmt += each
+
+        latestUpdate = QtGui.QStandardItem(str(int(round(amount/self.avgPd)))+" Avg Days")
+        self.dataEntryModel.setItem(indAmt-1, 4, latestUpdate)
+        lastDate = QtGui.QStandardItem(self.sysDateToDate(self.DateToSysDate(onDate)+datetime.timedelta(days=int(round(amount/self.avgPd))))+"(Avg)")
+        self.dataEntryModel.setItem(indAmt-1, 3, lastDate)
+        self.nextEntryLab.setText("Will Update")
+        finalUp = self.sysDateToDate(self.DateToSysDate(onDate)+datetime.timedelta(days=int(round(amount/self.avgPd))))
+        if not (self.DateToSysDate(finalUp) - DATETODAY).days < 0:
+            self.nextEntryLab.setText(
+                "Next Fuel may be with in " + str((self.DateToSysDate(finalUp) - DATETODAY).days) + " days")
+        else:
+            self.nextEntryLab.setText(
+                "Ohhh! You're doing great... \nYou crossed by " + str(
+                    (DATETODAY - (self.DateToSysDate(finalUp))).days) + " days")
+
         self.distanceValue.setText("Rs."+str(round(self.totAmt,2)))
 
     def displayGraph(self):
-        with open("fuelInfo.json") as fd:
+        with open(finalJson) as fd:
             data = json.load(fd)
         dates = []
         rates = []
         for keys, values in data['DailyRate'].items():
             dated = self.DateToSysDate(keys)
             if int(datetime.date.today().month) == int(str(dated).split("-")[1]):
-                print(keys)
+                # print(keys)
                 dates.append(keys)
 
         dates.sort()
@@ -250,9 +279,12 @@ class myApp(QtGui.QMainWindow):
             rates.append(data['DailyRate'][each])
         x = dates
         y = rates
+        mydate = datetime.datetime.now()
+        x = [i.split('-')[0] for i in x]
+        plt.figure(num="Rate graph for %s month"%mydate.strftime("%B"))
         plt.plot(x,y)
-        plt.xlabel("Somethin X")
-        plt.ylabel("Something Y")
+        plt.xlabel("Dates in %s"%mydate.strftime("%B"))
+        plt.ylabel("Petrol Rates")
 
         plt.show()
 
